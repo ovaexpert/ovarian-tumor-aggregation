@@ -1,0 +1,117 @@
+---
+title: "Results overview"
+author: "Andrzej Wójtowicz, Patryk Żywica"
+geometry: margin=0.1in
+output:
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+classoption: landscape,a4paper
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, comment="", 
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+Document generation date: `r Sys.time()`
+
+# Executive summary
+
+This document presents an overview of the results obtained by the aggregation strategies 
+in medical diagnosis support under data incompleteness.
+
+# Introduction
+
+In the *Analytic datasets construction* document we described how to obtain the training and test
+sets for the evaluation process. In the **Evaluating aggregation strategies** document we
+described how to evaluate different aggregation operators and thresholding strategies on these data.
+
+In the following document we present an overview of the performance of aggregation strategies. To decode names of the aggregation strategies, please refer to comments and code in `aggregators.R` and `aggregators-helpers.R` scripts.
+
+```{r load-data-and-scripts}
+load("datasets/evaluation-output.RData")
+source("results-overview.R")
+```
+
+# Results
+
+This section presents the results obtained on the training and test set. More detailed
+resutls consideres selected aggregation strategies which may fulfil medical requirements
+in the diagnostic process.
+
+## Training set
+
+The following figure presents the performance top 5 aggregation strategies within each group on the training set (by the lowest average total cost). For the reference, the original and uncertaintified models are also plotted.
+
+```{r plots-training}
+agg.sub = subset(binded.stats.all.perf,
+                 Measure==PERFORMANCE.MEASURE & Class=="Aggregation") %>%
+          group_by(Class, Subclass, Subsubclass)
+
+bestAggregators = NA
+if (PERFORMANCE.MEASURE.DESC) {
+    bestAggregators = top_n(agg.sub, 5, Value.training)$Method
+} else {
+    bestAggregators = top_n(agg.sub, 5, -Value.training)$Method }
+
+plotStatsTrainingSet(subset(training.stats.all,
+                            Method %in% bestAggregators | Class=="Model"),
+                     PERFORMANCE.MEASURE)
+```
+
+## Test set
+
+The left part of the following figure compares the total cost performance on the test set among the
+original and uncertaintified models and each aggregation group (by the lowest cost). The right 
+part compares accuracy, sensitivity, specificity and decisiveness on test set among among the 
+original and uncertaintified models and each aggregation group.
+ 
+
+```{r plots-test}
+plotStatsTestSet(test.stats.all,
+                  PERFORMANCE.MEASURE, PERFORMANCE.MEASURE.DESC,
+                  c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
+```
+
+## Selected aggregation strategies
+
+The left part of the following figure compares the total cost performance on the test set of the
+aggreagation strategies which fulfil medical requirements in the diagnostic process. The right part
+compares accuracy, sensitivity, specificity and decisiveness on these aggregation strategies. 
+
+```{r plots-selected}
+plotSelectedAggregationOperators(selected.aggrs,
+                                 PERFORMANCE.MEASURE, 
+                                 c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
+```
+
+## Difference between aggregation strategies and uncertaintified models
+
+The following table shows the resuls McNemar's test among the selected aggregation
+strategies and with relation to the uncertaintified models. The `NaN` values indicate 
+that in a given pair of methods classify identically.
+
+```{r mcnemar-pvals}
+library(knitr)
+library(dplyr)
+
+desc = AGGREGATORS.BINDED.DESCRIPTION %>% 
+       filter(Method %in% colnames(pvals))
+legend = data.frame(Id=LETTERS[1:length(colnames(pvals))], 
+                    Method=colnames(pvals))
+
+kable(join(legend, desc, by="Method"), 
+      caption="Legend: short ids for selected aggregation strategies", align='l')
+colnames(pvals) = LETTERS[1:length(colnames(pvals))]
+rownames(pvals) = gsub("unc. ", "", rownames(pvals))
+rownames(pvals) = c(LETTERS[1:length(colnames(pvals))],
+                    rownames(pvals)[(length(colnames(pvals))+1):length(rownames(pvals))])
+
+pvals3 = round(pvals,3)
+pvals3[is.na(pvals) & !is.nan(pvals)]=""
+pvals3 = gsub("^0$", "0.000", pvals3, perl=T)
+pvals3 = gsub("^1$", "1.000", pvals3, perl=T)
+kable(pvals3, caption="McNemar's test with Benjamini-Hochberg correction among selected aggregation strategies and bettwen the strageties and the uncertaintified models")
+```

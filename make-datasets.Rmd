@@ -1,0 +1,332 @@
+---
+title: "Analytic datasets construction"
+author: "Andrzej Wójtowicz, Patryk Żywica"
+output: 
+    html_document:
+        toc: yes
+    pdf_document:
+        toc: yes
+---
+
+```{r cache=FALSE, echo=FALSE}
+options(width=110)
+knitr::opts_chunk$set(comment="")
+knitr::read_chunk('make-datasets.R')
+```
+
+Document generation date: `r Sys.time()`
+
+# Executive summary
+
+This document presents the process of obtaining analytic data used for evaluation
+of effectivness of different aggregation operators and thresholding
+strategies in medical diagnosis support under data incompleteness.
+
+# Introduction
+
+Suppose we have a patient with a diagnosed ovarian tumor. Such a patient can be
+described by a set of features. The physicians have developed many predictive 
+models, which on the base of the features can predict whether the tumor is 
+malignant or benign. The models assume working on a complete set of the features 
+but frequently some of them are missing. A novel approach is to adjust the models to work 
+with incomplete data and summarize the results from different models. We want 
+to study the performance of different aggregation strategies of such models 
+under different level of data incompleteness. In this document we present
+a process of obtaining such data for further evaluation.
+
+The outline of the process is as follow. In the first phase, we sample patients
+from two groups of malignancy. Then we randomly obscure (remove) values of their 
+features. Afterwards we compute the results of the adjusted models on the 
+obscured data. We repeat whole procedure many times for each level of data 
+incompleteness. This training set will be used to optimize aggregation operators
+and thresholding strategies. In the second phase, we compute the results of
+the adjusted models on the dataset, where incompleteness is an effect of a 
+physician's decision. This test set will be used to evaluate of the optimized 
+aggregation stretegies.
+
+For sake of readibility, some code is externalized into separate R files.
+
+```{r init, message=FALSE, warning=FALSE}
+```
+
+## Overview of supplementary files
+
+### Initial configuration
+
+An initial setup for the process is stored in `config.R` file. Besides setting
+a seed for random procedures (`SEED` constant) and setting constants for 
+input/output files and directories (`*.DIR`/`*.FILE`/`*.LOCATION` constants), 
+there are several values which are important for the building process.
+
+An input database will be splitted into two parts: the first will be used for
+training and the second will be used for testing. The first will be size
+of `TRAINING.SIZE` = $`r TRAINING.SIZE`$ patients.
+
+The `PROBE.SIZE.NEGATIVE` = $`r PROBE.SIZE.NEGATIVE`$ and `PROBE.SIZE.POSITIVE` = 
+$`r PROBE.SIZE.POSITIVE`$ constants are the sizes of samples of patients with 
+benign and malignant tumors, respectively. The patients' attributes for this 
+samples will be obscured during the construcion of the training set.
+
+The `OBSCURE.PERCENTAGES` vector consists of considered levels of obscuration of
+the attributes in the simulation step. The values vary from $`r min(OBSCURE.PERCENTAGES)`$ to
+$`r max(OBSCURE.PERCENTAGES)`$.
+
+The `OBSCURE.MAX` = $`r OBSCURE.MAX`$ constant indicates the maximum level of obscuration in the simulation step and maximum level of data incompleteness in the evaluation set.
+
+The `OBSUCRE.REPEAT` = $`r OBSUCRE.REPEAT`$ constant is a number of repeats of
+random attributes obscuration in the simulation step.
+
+### Uncertaintified diagnostic models
+
+All uncertaintyfied diagnostic models are implemented in `methods.R` file. There 
+are $`r length(METHODS)`$ models stored in `METHODS` vector. Each of them for any
+patient (regardless of missing data) produces an interval contained in $[0,1]$.
+This interval should be interpreted as a set of all possible diagnoses which can
+be returned by this model for a given patient. Due to missing data in patient's
+description, the length of the interval grows. Single point interval indicates no
+missing data in the patient's description. Values below $0.5$ indicate that a tumor 
+is benign; values above or equal to $0.5$ indicate that a tumor is malignant.
+
+The `METHODS.NAME` vector consists of short printable names for the models. 
+The `METHODS.COL` vector contains names of patients' attributes used by a model.
+
+The `COLS.ALL` vector is an unique set of all patients' attributes used by
+the models. The `COLS.SURE` vector has names of the attributes which are always
+available and will not be obscured in the simulation step. The `COLS.OBSC` has
+names of the attributes which for a given patient might be incomplete; these
+attributes will be obscured during the construcion of the training set.
+
+The `COLS.SURE` vector looks as follows:
+
+```{r show-cols-sure}
+print(COLS.SURE)
+```
+
+### Auxiliary functions
+
+Debugging functions are implemented in `utils.R` file.
+
+# Database
+
+The following subsections describes the process of loading the data with patients,
+preprocessing and division into the training and test sets.
+
+### Loading the data
+
+The original patient database is stored in a CSV file. Due to legal restrictions, 
+this database cannot be published. The main objective of this document is to document
+the process of building the analytic dataset from this undisclosed database.
+
+```{r db-read}
+```
+
+The initial database contains $`r ncol(db)`$ variables and $`r nrow(db)`$ cases. 
+The basic structure of this database is following (observe that only important 
+columns for this research are presented):
+
+```{r display-initial-db}
+dbSummary = t(sapply(select(db, -PatientId), 
+                function(x){c(
+                min=min(x, na.rm=T), 
+                median=median(x, na.rm=T), 
+                max=max(x, na.rm=T),
+                NAs=sum(is.na(x))
+             )}))
+print(round(dbSummary, 2))
+```
+
+The `MalignancyCharacter` feature indicates whether a patient has a benign ($0$),
+malignant ($1$) or borderline ($2$) tumor. A few attributes mentioned in `COLS.SURE`
+have missing values - this is caused by the fact that at the time of data collection physician 
+did not know that such information should be obtained from patients.
+
+The sonographic attributes are described in the paper: D. Timmerman, L. Valentin, 
+et al (2000). *Terms, definitions and measurements to describe the sonographic 
+features of adnexal tumors: a consensus opinion from the International Ovarian 
+Tumor Analysis (IOTA) Group*. Ultrasound in Obstetrics & Gynecology, 16(5), 500-505.
+
+### Preprocessing
+
+In the first step we combine malignant with borderline tumors.
+
+Secondly, the database does not contain some values which can be inferred from 
+other ones. An example of such value is a dimension of papilary projections 
+(`APapDimension`), which is missing in case of no papilary projections in the 
+tumor (`Pap==0`). Such values are inserted in database.
+
+Missing `Ri` values are inserted either when a physician decided not to perform this
+examination due to its obvious result or in case of avascular endometriomas.
+
+```{r db-preprocess}
+```
+
+### Division into training and test sets
+
+The database is splitted into two sets:
+
+ 1. `db.training` - it consists of $`r TRAINING.SIZE`$ patients with the complete attributes;
+this data will be used to construct the training set,
+ 2. `db.test` - it consists of patients with no more than 
+$`r paste0(OBSCURE.MAX*100, "\\%")`$ incomplete attribues and a few patients with 
+complete attributes; this data will be used to construct the test set.
+
+The choose of the patients with complete attributes is done by use of a
+stratified simple random sampling without replacement.
+
+```{r db-divide}
+```
+
+The following figure shows a distribution of patients with regard to the percentage of missing values in the dataset:
+
+```{r db-divide-malig-vs-missing, fig.width=6, fig.height=3, echo=FALSE, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(gridExtra)
+db.eval = bind_rows(db.completeCases, db.incompleteCases)
+obscLvl = apply(select(db.eval, one_of(COLS.OBSC)), 1,
+                function(row){round(sum(is.na(row))/length(row), 2)})
+
+ranges = cut(obscLvl, breaks=c(0,0.5,0.9))
+levels(ranges) = c(levels(ranges), "0")
+ranges[is.na(ranges)] = 0
+ranges = factor(ranges, levels(ranges)[c(3,1,2)])
+levels(ranges) = c("0%", "(0%, 50%]", "(50%, 90%]")
+
+df = data.frame(Range=ranges,
+                MalignancyCharacter=factor(db.eval$MalignancyCharacter))
+levels(df$MalignancyCharacter) = c("benign", "malignant")
+
+p = ggplot(data=df, aes(x=Range, y=..count.., fill=MalignancyCharacter, ymax=max(..count..))) +
+    geom_bar(position="dodge", width=0.9) +
+    geom_bar(position="dodge", color="black", width=0.9, show_guide=FALSE) +
+    theme_bw() +
+    coord_cartesian(ylim=c(0, 130)) +
+    theme(plot.margin = unit(c(0, 0, 0.06, 0), "npc"),
+          axis.title.x=element_text(vjust=-0.5)) +
+    xlab("Percentage of missing values") +
+    geom_text(aes(label=..count.., y= ..count..+5), stat= "bin",
+              position= position_dodge(width=0.9), size=3)  +
+    scale_fill_brewer(name="Malignancy character", palette="Paired") +
+    ylab("Count")
+
+print(p)
+```
+
+#### Sets summary
+
+The resulting `db.training` has $`r sum(db.training$MalignancyCharacter == 0)`$ benign and 
+$`r sum(db.training$MalignancyCharacter == 1)`$ malignant cases. 
+
+```{r display-preprocessed-training-data}
+fdSummary = t(sapply(select(db.training, -PatientId), 
+                function(x){c(
+                min=min(x, na.rm=T), 
+                median=median(x, na.rm=T), 
+                max=max(x, na.rm=T),
+                NAs=sum(is.na(x))
+             )}))
+print(round(fdSummary, 2))
+```
+
+The resulting `db.test` has $`r sum(db.test$MalignancyCharacter == 0)`$ benign and 
+$`r sum(db.test$MalignancyCharacter == 1)`$ malignant cases.
+
+```{r display-preprocessed-test-data}
+odSummary = t(sapply(select(db.test, -PatientId), 
+                function(x){c(
+                min=min(x, na.rm=T), 
+                median=median(x, na.rm=T), 
+                max=max(x, na.rm=T),
+                NAs=sum(is.na(x))
+             )}))
+print(round(odSummary, 2))
+```
+
+The following figure shows a distribution of classes in the training and test sets:
+
+```{r db-divide-malig-training-vs-test, fig.width=6, fig.height=3, echo=FALSE, warning=FALSE, message=FALSE}
+df = bind_rows(mutate(db.training, set="training set"),
+               mutate(db.test,     set="test set"))
+
+df$MalignancyCharacter=factor(df$MalignancyCharacter)
+levels(df$MalignancyCharacter) = c("benign", "malignant")
+df$set = factor(df$set, levels = c("training set", "test set"))
+
+p = ggplot(data=df, aes(x=set, y=..count.., fill=MalignancyCharacter, ymax=max(..count..))) +
+    geom_bar(position="dodge") +
+    geom_bar(position="dodge", color="black", show_guide=FALSE) +
+    theme_bw() +
+    coord_cartesian(ylim=c(0, 135)) +
+    theme(plot.margin = unit(c(0, 0, 0, 0), "npc"),
+          axis.title.x=element_blank()) +
+    geom_text(aes(label=..count.., y= ..count..+5), stat= "bin",
+              position= position_dodge(width=0.9), size=3)  +
+    scale_fill_brewer(name="Malignancy character", palette="Paired") +
+        ylab("Count")
+
+print(p)
+```
+
+# Building the datasets
+
+Because we can not share the initial database, we will create and provide simplified preprocessed datasets. From this moment, **by the training and test sets we mean the calculated outputs of the uncertaintified diagnostic models**.
+
+The same structure is used for both the training and test sets 
+(`training.data` and `test.data` data frames, respectively). First $4$ columns of 
+a data frame indicate the following:
+
+ 1. `PatientId` - a patient's identifier in the original database,
+ 2. `ObscureLevel` - a percentage of a patient's attributes with missing data,
+ 3. `ObscureRepeat` - a number of the iteration for a given `ObscureLevel` 
+(in the simulation step),
+ 4. `MalignancyCharacter` - an actual diagnosis for a given patient.
+
+Next `r length(METHODS)*2` columns contain lower and upper bounds of a given 
+uncertaintified diagnostic model.
+
+### Training set
+
+The code below fills the `training.data` data frame with values obtained by 
+the application of the diagnostic models to the obscured patient data. For 
+each obscuration level and each repeat, a subset of the database is randomly obscured. 
+Then the output is calculated for the uncertaintified diagnostic models. 
+The results are stored sequentialy in the data frame.
+
+Observe that dataset contain also data without obscuration (`ObscureLevel==0` 
+for the top rows). Although some missing values can be filled like in *Preprocessing* step,
+for the simplicity and clarity of the simulation process we leave them as they are.
+
+```{r build-training-simulations-data, results='hide'}
+```
+
+The sample structure of the resulting simulated dataset for the uncertaintified
+diagnostic models is following:
+
+```{r training-simulations-header}
+head(as.data.frame(training.data), n=3)
+```
+
+### Test set
+
+Similarly, the code below fills the `test.data` data frame with values obtained 
+by the application of the diagnostic models to the patients with the incomplete
+features. In this case lack of data is an effect of a physician's decision.
+
+`ObscureLevel` is calculated as the real percentage of missing data. `ObscureRepeat`
+is fixed and set to $1$.
+
+```{r build-test-data}
+```
+
+The sample structure of the resulting evaluation dataset for the uncertaintified 
+diagnostic models is following:
+
+```{r test-data-tail}
+tail(test.data, n=3)
+```
+
+# Saving the results
+
+The constructed datasets are stored as separate CSV files.
+
+```{r save-results}
+```

@@ -1,0 +1,317 @@
+---
+title: "Evaluating aggregation strategies"
+author: "Andrzej Wójtowicz, Patryk Żywica"
+output:
+  html_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r cache=FALSE, echo=FALSE}
+options(width=110)
+knitr::opts_chunk$set(comment="")
+knitr::read_chunk('evaluation.R')
+```
+
+Document generation date: `r Sys.time()`
+
+# Executive summary
+
+This document presents the evaluation process of different aggregation operators and
+thresholding strategies in medical diagnosis support under data incompleteness.
+
+# Introduction
+
+In the *Analytic datasets construction* document we described how to obtain two sets,
+which consist of lists of interval-valued diagnoses contained in $[0,1]$:
+
+ * the first, where some patients' features are simulated to be missing,
+ * the second, where patients' features are missing due to decisions of physicians.
+
+In the following document we describe how to choose and evaluate aggregation 
+strategies in a two-step scheme. Firstly, we utilize the dataset with simulated missing
+values to optimize different aggregation strategies. Secondly, we use the dataset with 
+truly missing values to performance evaluation.
+
+For sake of readibility, some code is externalized into separate R files.
+
+```{r init, message=FALSE, warning=FALSE}
+```
+
+## Overview of supplementary files
+
+### Initial configuration
+
+An initial setup for the process is stored in `config.R` file. Besides setting
+a seed for random procesures (`SEED` constant) and setting constants for 
+input/output files and directories (`*.DIR`/`*.FILE`/`*.LOCATION` constants), 
+there are some values which are important for the evaluation process.
+
+As a measure of classification effectiveness we choose `PERFORMANCE.MEASURE` 
+= `r PERFORMANCE.MEASURE`. Since the lower values of this measure mean better performance, 
+`PERFORMANCE.MEASURE.DESC` = `r PERFORMANCE.MEASURE.DESC`.
+
+To parallelize calculation process there will be used `THREADS` = `r THREADS` threads.
+
+### Diagnostic models
+
+The uncertaintified diagnostic models are implemented in `methods.R` file and they
+are breifly described in the *Analytic datasets construction* document.
+
+### Aggregation operators and thresholding strategies
+
+Aggregation operators and thresholding strategies are implemented in `aggregators.R`, 
+`aggregators-helpers.R` and `aggregators-optimize.R` files. A description of the 
+operators is beyond the technical scope of this document.
+
+### Statistics
+
+All statistical indicators are implemented in `stats.R` file. Most of them are standard 
+statistics: accuracy, sensitivity and specificity. These with suffix `.all` are 
+adjusted variations to extend statistic to three cases: malignant, benign, no diagnosis.
+
+The statistic operates on six possible outcomes of the diagnosis:
+
+ * `TP` - true positive,
+ * `TN` - true negative,
+ * `FN` - false negative,
+ * `FP` - false positive,
+ * `N0` - no prediction when tumor was benign,
+ * `N1` - no prediction when tumor was malignant.
+ 
+**Remark**: in reality, a classifier or an aggregation method may only output `NA` in case of no prediction; the distinction between `N0` and `N1` is introduced in the experiment only for the purpose of the performance evaluation.
+ 
+A decisiveness means the ability to make a diagnosis ($0$ - a model never gives a prediction,
+$1$ - a model always gives a prediction). A cost matrix results a sum of the six possible outcomes
+with a given weights provided by an expert.
+
+### Efficiacy calculations
+
+Functions for efficacy calculation of the models and the aggregators are implementd in
+`utils.R`. This calculation process will be described later in the document.
+
+### Auxiliary functions
+
+Debugging functions are implemented in `utils.R` file. A function for McNemar's test
+is stored in `mcn-test.R` file.
+
+# Loading the data
+
+The datasets are stored in CSV files.
+
+```{r read-datasets}
+```
+
+As it is written in the *Analytic datasets construction* document, the same structure 
+is used for both the training and test sets (`ds.training` and
+`ds.test` data frames, respectively; in the previous step these data were stored in `training.data` and `test.data` variables). First $4$ columns of a data frame indicate the following:
+
+ 1. `PatientId` - a patient's identifier in the original database,
+ 2. `ObscureLevel` - a percentage of a patient's attributes with missing data,
+ 3. `ObscureRepeat` - a number of the iteration for a given `ObscureLevel` 
+(only valid in simulation phase),
+ 4. `MalignancyCharacter` - an actual diagnosis for a given patient.
+
+Remaining columns contain lower and upper bounds of a given uncertaintified diagnostic model.
+
+A sample overview of the datasets is following:
+
+```{r show-datasets}
+head(ds.training, n=3)
+tail(ds.test, n=3)
+```
+
+# Setup for parallel calculations
+
+Whole procedure is very time-consuming. In order to get results in reasonable
+time, we make use of parallel calculations. In this step we prepare the environment to
+be capable of such calculations (export variables to workers, etc.). All time-consuming 
+calculations are done by use of `usedLapply` function (either single-threaded or parallel).
+
+```{r parallel-init}
+```
+
+# Training phase
+
+In this step `ds.training` dataset is processed.
+
+## Models
+
+For the reference purposes we check how the diagnostic models, both original 
+and uncertaintified, perform on the simulated training set.
+
+Firstly, for each patient we calculate outputs of each single diagnostic model. This is
+achieved by serveral consequtive steps:
+
+ * `*.models.outcomes` for each row (patient) returns results of each `r length(METHODS)`
+diagnostic model; if an upper bound is less than $0.5$, then a model predicts a benign tumor;
+if lowe bound is greater or equal to $0.5$, then a model predicts a malignant tumor;
+for each particular case an output can be one of the mentioned above outcomes (`TP`, `TN`, etc.).
+ * `aggregate.outcomes` combines the results of `*.models.outcomes`, namely for each obscuration
+level and obscuration repeat it gathers outcomes of each model,
+ * `calculate.stats` takes the results of `aggregate.outcomes` and calculates performance
+statistics with respect to the obscuration level and models.
+
+Afterwards the results are converted into a long format by use of `melt` function. Finally,
+a column is renamed to be more descriptive and three columns are added to latterly identify the 
+diagnostic models from aggregation operators.
+
+The following code produces results for the original models:
+
+```{r training-statistics-models-original}
+```
+
+The following code produces results for the uncertaintified models:
+
+```{r training-statistics-models-uncertaintified}
+```
+
+## Aggregation operators and thresholding strategies
+
+Secondly, similar procedure is performed for the aggregation operators:
+
+ * `outcomes.aggrs` data frame is constructed by the application of each aggregation operator 
+to the simulation data; `diags` is a vector of zeros and ones, which are converted to the mentioned 
+above six possible outcomes (`TP`, `TN`, etc.),
+ * `aggregate.outcomes` combines the results of `outcomes.aggrs`,
+ * `calculate.stats` takes the results of `aggregate.outcomes` and calculates performance
+statistics with respect to the obscuration level and aggregation operators.
+
+Afterwards the results are converted into a long format by use of `melt` function. Finally,
+a column is renamed to be more descriptive and three columns are added to latterly identify the 
+aggregation operators.
+
+```{r training-statistics-aggregators}
+```
+
+## Performance calculation
+
+The simulation results for the models and aggregation operators are combined into one data frame.
+
+```{r training-statistics-bind}
+```
+
+For a given statistic, the performance of each model and aggregation operator is calculated 
+as a mean value of the statistic over all considered levels of missing data.
+
+Finally, three columns are added to identify the models and aggregation operators.
+
+```{r training-statistics-performance-calculation}
+```
+
+The aggregation operators and thresholding strategies are optimised with regards to numerical
+parameters. As the last step of the training phase, all statistics for the models and aggregation 
+strategies are combined.
+
+```{r select-optimized-aggregators}
+```
+
+# Test phase
+
+In this step `ds.test` datasets is processed.
+
+After optimisation of the aggregation strategies on the training data, we will evaluate the 
+models and the aggregation operators on the data where patients' features are missing 
+due to decisions of a physician.
+
+The procedure of performance calculation is very similar, hence the same functions will be used.
+Because of relatively small `ds.test` dataset, this time we will not distinguish different 
+obscuration level - we will calculate statistics over all cases. To perform this operation, 
+we set the same missing data level for all patients (this step is made to achieve data 
+adjustment to the interface of the functions and it has no impact on final results).
+
+```{r test-combine-obscuration-levels}
+```
+
+## Models
+
+For the reference purposes we check how the diagnostic models, both original 
+and uncertaintified, perform on the test set.
+
+As in the training phase, for each patient we calculate outputs of each single diagnostic model. 
+This is achieved by serveral consequtive steps:
+
+ * `*.models.outcomes` for each row (patient) returns results of each `r length(METHODS)`
+diagnostic model; this can be one of the mentioned above outcomes (`TP`, `TN`, etc.).
+ * `aggregate.outcomes` combines the results of `*.models.outcomes`,
+ * `calculate.stats` takes the results of `aggregate.outcomes` and calculates performance
+statistics with respect to the models.
+
+Afterwards the results are converted into a long format by use of `melt` function. A column
+is renamed to be more descriptive and three columns are added to identify the 
+diagnostic models from aggregation operators. Finally, the `ObscureLevel` column is removed, since
+it is not used in the evaluation step.
+
+The following code produces results for the original models:
+
+```{r test-statistics-models-original}
+```
+
+The following code produces results for the uncertaintified models:
+
+```{r test-statistics-models-uncertaintified}
+```
+
+## Aggregation operators and thresholding strategies
+
+Similar procedure is performed for the aggregation strategies:
+
+ * `outcomes.aggrs` data frame is constructed by the application of each aggregation operator 
+to the simulation data; `diags` is a vector of zeros and ones, which are converted to the mentioned
+above six possible outcomes (`TP`, `TN`, etc.),
+ * `aggregate.outcomes` combines the results of `outcomes.aggrs`,
+ * `calculate.stats` takes the results of `aggregate.outcomes` and calculates performance
+statistics with respect to the aggregation operators.
+
+Afterwards the results are converted into a long format by use of `melt` function. A column 
+is renamed to be more descriptive and the `ObscureLevel` column is removed, since
+it is not used in the evaluation step. Finally, three columns are added to identify the 
+aggregation operators.
+
+```{r test-statistics-aggregators}
+```
+
+## Binding results
+
+Eventually, we combine the statistics of the models and aggregation strategies 
+obtained on the test set.
+
+```{r test-statistics-bind}
+```
+
+# Converting results for summary
+
+To achieve better outlook on the results, several statistics are bound.
+
+To statistics obtained on the test set we add those achieved on the training set.
+
+```{r test-statistics-performance-bind-with-training}
+```
+
+Secondly, we convert statistics from  long to wide format.
+
+```{r convert-statistics-performance-to-wide-format}
+```
+
+As the last step of the test phase, we select a collection of promising aggregation
+strategies which might be suitable to the medical criteria and implemented for further
+performance validation. We also perform the McNemar's test among the selected aggregation
+strategies and with relation to the uncertaintified models.
+
+```{r aggregators-selection-and-statistical-tests}
+```
+
+# Clean up parallel calculations
+
+When all calculations are done, we can close all connections to parallel workers.
+
+```{r parallel-shutdown}
+```
+
+# Saving the results
+
+Lastly, we save all results (and envirionment) to a binary R file.
+
+```{r save-evaluation}
+```

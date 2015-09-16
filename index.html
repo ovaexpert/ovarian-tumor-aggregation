@@ -20,14 +20,81 @@
 
     <section class="main-content">
     
-       <p>The research implementation on supporting medical diagnosis under incomplete data.</p>
+        <h2>Introduction</h2>
+    
+        <p>This page describes files which compose the research implementation 
+        on supporting medical diagnosis under incomplete data.</p>
+
+        <p>All scripts are written in <a href="http://cran.r-project.org">R 3.1.2</a>. 
+        The <a href="http://www.rstudio.com">RStudio</a> project is supervised by
+        <a href="https://rstudio.github.io/packrat">packrat</a> software to maintain compatibility 
+        of R packages. Documents are generated with use 
+        of <a href="http://yihui.name/knitr">knitr</a>.</p>
+
+        <p>The research consists of 3 steps:</p>
 
         <ol>
-            <li><a href="https://github.com/ovaexpert/ovarian-tumor-aggregation#readme">Technical overview</a></li>
-            <li><a href="make-datasets.html">Making analytic datasets</a></li>
-            <li><a href="evaluation.html">Evaluation process</a></li>
-            <li><a href="results-overview.html">Results overview</a></li>
+            <li>making analytic datasets,</li>
+            <li>evaluation process,</li>
+            <li>visualizing results.</li>
         </ol>
+
+        <h2><a id="user-content-downloading-the-results" class="anchor" href="#downloading-the-results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Downloading the results</h2>
+
+        <p>To view outputs of the experiment, run <code>download-data.R</code> script. It will 
+        download CSV datasets and binary Rdata output:</p>
+
+        <ul>
+        <li><code>datasets/training.csv</code>,</li>
+        <li><code>datasets/test.csv</code>,</li>
+        <li><code>datasets/evaluation-output.Rdata</code>.</li>
+        </ul>
+
+        <p>The process of the research and the results are described in generated documents:</p>
+        
+        <ol>
+            <li><a href="make-datasets.html">making analytic datasets</a>,</li>
+            <li><a href="evaluation.html">evaluation process</a>,</li>
+            <li><a href="results-overview.html">results overview</a>.</li>
+        </ol>
+
+
+        <h2><a id="user-content-reproducing-the-research" class="anchor" href="#reproducing-the-research" aria-hidden="true"><span class="octicon octicon-link"></span></a>Reproducing the research</h2>
+
+        <p>Due to legal restrictions, the initial database cannot be published. 
+        Therefore, <strong>the first step <em>making analytic datasets</em> is not reproducible</strong>.</p>
+
+        <p>To prepare the software environment to the experiment, open 
+        <code>ovarian-tumor-aggregation.Rproj</code> file in RStudio in order to launch packrat and 
+        download necessary libraries.</p>
+
+        <h3><a id="user-content-creating-datasets-and-final-results" class="anchor" href="#creating-datasets-and-final-results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Creating datasets and final results</h3>
+
+        <p>To create only datasets and results, which can be further investigated,
+        execute the following scripts:</p>
+
+        <ul>
+        <li><code>make-datasets.R</code> - it generates <code>datasets/training.csv</code> and
+        <code>datasets/test.csv</code> files (not reproducible),</li>
+        <li><code>evaluation.R</code> - it generates <code>datasets/evaluation-output.RData</code> file.</li>
+        </ul>
+
+        <p><strong>Caution</strong>: running <code>evaluation.R</code> is very time-consuming and extensively 
+        absorbs computational resources; it is recommended to run it in environment with
+        32 x 2.0 GHz cores and at least 200 GB RAM in such setting; the calculation process should take
+        approximately 18 hours.</p>
+
+        <h3><a id="user-content-creating-datasets-final-results-and-documents" class="anchor" href="#creating-datasets-final-results-and-documents" aria-hidden="true"><span class="octicon octicon-link"></span></a>Creating datasets, final results and documents</h3>
+
+        <p>To additionaly generate documents, which explain the implementation 
+        of the experiment and the results, instead of running above-mentioned two R script, 
+        launch in <code>knitr</code>:</p>
+
+        <ul>
+        <li><code>make-datasets.Rmd</code> (not reproducible),</li>
+        <li><code>evaluation.Rmd</code>,</li>
+        <li><code>results-overview.Rmd</code>.</li>
+        </ul>
 
       <footer class="site-footer">
         <span class="site-footer-owner">This project is maintained by <a href="http://ovaexpert.pl/en/">OvaExpert</a>.</span>

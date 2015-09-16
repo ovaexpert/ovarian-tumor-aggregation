@@ -25,7 +25,7 @@ TRAINING.LOCATION          = paste(DATASETS.DIR, TRAINING.FILE, sep='/')
 TEST.LOCATION              = paste(DATASETS.DIR, TEST.FILE,     sep='/')
 EVALUATION.OUTPUT.LOCATION = paste(DATASETS.DIR, EVALUATION.OUTPUT.FILE, sep='/')
 
-GEN.DATA.URL = "http://min.wmi.amu.edu.pl/data/ovarian-cancer-aggregators"
+GEN.DATA.URL = "http://min.wmi.amu.edu.pl/data/ovarian-tumor-aggregation"
 
 set.seed(SEED)
 

@@ -25,8 +25,9 @@ in medical diagnosis support under data incompleteness.
 # Introduction
 
 In the *Analytic datasets construction* document we described how to obtain the training and test
-sets for the evaluation process. In the **Evaluating aggregation strategies** document we
-described how to evaluate different aggregation operators and thresholding strategies on these data.
+sets for the evaluation process. In the **Training and evaluation of aggregation strategies**
+document we described how to evaluate different aggregation operators and thresholding 
+strategies on these data.
 
 In the following document we present an overview of the performance of aggregation strategies. To decode names of the aggregation strategies, please refer to comments and code in `aggregators.R` and `aggregators-helpers.R` scripts.
 

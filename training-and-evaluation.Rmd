@@ -1,5 +1,5 @@
 ---
-title: "Evaluating aggregation strategies"
+title: "Training and evaluation of aggregation strategies"
 author: "Andrzej Wójtowicz, Patryk Żywica"
 output:
   html_document:
@@ -11,14 +11,14 @@ output:
 ```{r cache=FALSE, echo=FALSE}
 options(width=110)
 knitr::opts_chunk$set(comment="")
-knitr::read_chunk('evaluation.R')
+knitr::read_chunk('training-and-evaluation.R')
 ```
 
 Document generation date: `r Sys.time()`
 
 # Executive summary
 
-This document presents the evaluation process of different aggregation operators and
+This document presents the process of training and evaluation of different aggregation operators and
 thresholding strategies in medical diagnosis support under data incompleteness.
 
 # Introduction

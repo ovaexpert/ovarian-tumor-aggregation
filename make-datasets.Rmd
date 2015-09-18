@@ -18,8 +18,8 @@ Document generation date: `r Sys.time()`
 
 # Executive summary
 
-This document presents the process of obtaining analytic data used for evaluation
-of effectivness of different aggregation operators and thresholding
+This document presents the process of obtaining analytic data used for training and 
+evaluation of effectivness of different aggregation operators and thresholding
 strategies in medical diagnosis support under data incompleteness.
 
 # Introduction

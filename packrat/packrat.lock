@@ -45,6 +45,12 @@ Source: CRAN
 Version: 1.1-2
 Hash: 5203278413b09be06483c5ac1920bb05
 
+Package: RCurl
+Source: CRAN
+Version: 1.95-4.7
+Hash: c3db5bfbdc898156aecd06b2128239b7
+Requires: bitops
+
 Package: Rcpp
 Source: CRAN
 Version: 0.11.6

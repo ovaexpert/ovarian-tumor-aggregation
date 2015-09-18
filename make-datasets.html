@@ -8,7 +8,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
-<meta name="author" content="Patryk Żywica, Andrzej Wójtowicz" />
+<meta name="author" content="Andrzej Wójtowicz, Patryk Żywica" />
 
 
 <title>Analytic datasets construction</title>
@@ -62,14 +62,14 @@ img {
 
 <div id="header">
 <h1 class="title">Analytic datasets construction</h1>
-<h4 class="author"><em>Patryk Żywica, Andrzej Wójtowicz</em></h4>
+<h4 class="author"><em>Andrzej Wójtowicz, Patryk Żywica</em></h4>
 </div>
 
 <div id="TOC">
 <ul>
 <li><a href="#executive-summary">Executive summary</a></li>
 <li><a href="#introduction">Introduction</a><ul>
-<li><a href="#overview-on-supplementary-files">Overview on supplementary files</a><ul>
+<li><a href="#overview-of-supplementary-files">Overview of supplementary files</a><ul>
 <li><a href="#initial-configuration">Initial configuration</a></li>
 <li><a href="#uncertaintified-diagnostic-models">Uncertaintified diagnostic models</a></li>
 <li><a href="#auxiliary-functions">Auxiliary functions</a></li>
@@ -88,10 +88,10 @@ img {
 </ul>
 </div>
 
-<p>Document generation date: 2015-08-14 11:41:32</p>
+<p>Document generation date: 2015-09-18 12:04:47</p>
 <div id="executive-summary" class="section level1">
 <h1>Executive summary</h1>
-<p>This document presents the process of obtaining analytic data used for evaluation of effectivness of different aggregation operators and thresholding strategies in medical diagnosis support under data incompleteness.</p>
+<p>This document presents the process of obtaining analytic data used for training and evaluation of effectivness of different aggregation operators and thresholding strategies in medical diagnosis support under data incompleteness.</p>
 </div>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
@@ -106,16 +106,16 @@ source(&quot;utils.R&quot;)
 
 library(dplyr)
 library(sampling)</code></pre>
-<div id="overview-on-supplementary-files" class="section level2">
-<h2>Overview on supplementary files</h2>
+<div id="overview-of-supplementary-files" class="section level2">
+<h2>Overview of supplementary files</h2>
 <div id="initial-configuration" class="section level3">
 <h3>Initial configuration</h3>
-<p>An initial setup for the process is stored in <code>config.R</code> file. Besides setting a seed for random procesures (<code>SEED</code> constant) and setting constants for input/output files and directories (<code>*.DIR</code>/<code>*.FILE</code>/<code>*.LOCATION</code> constants), there are several values which are important for the building process.</p>
+<p>An initial setup for the process is stored in <code>config.R</code> file. Besides setting a seed for random procedures (<code>SEED</code> constant) and setting constants for input/output files and directories (<code>*.DIR</code>/<code>*.FILE</code>/<code>*.LOCATION</code> constants), there are several values which are important for the building process.</p>
 <p>An input database will be splitted into two parts: the first will be used for training and the second will be used for testing. The first will be size of <code>TRAINING.SIZE</code> = <span class="math">\(200\)</span> patients.</p>
 <p>The <code>PROBE.SIZE.NEGATIVE</code> = <span class="math">\(75\)</span> and <code>PROBE.SIZE.POSITIVE</code> = <span class="math">\(75\)</span> constants are the sizes of samples of patients with benign and malignant tumors, respectively. The patients’ attributes for this samples will be obscured during the construcion of the training set.</p>
 <p>The <code>OBSCURE.PERCENTAGES</code> vector consists of considered levels of obscuration of the attributes in the simulation step. The values vary from <span class="math">\(0\)</span> to <span class="math">\(0.5\)</span>.</p>
 <p>The <code>OBSCURE.MAX</code> = <span class="math">\(0.5\)</span> constant indicates the maximum level of obscuration in the simulation step and maximum level of data incompleteness in the evaluation set.</p>
-<p>The <code>OBSUCRE.REPEAT</code> = <span class="math">\(2\)</span> constant is a number of repeats of random attributes obscuration in the simulation step.</p>
+<p>The <code>OBSUCRE.REPEAT</code> = <span class="math">\(1000\)</span> constant is a number of repeats of random attributes obscuration in the simulation step.</p>
 </div>
 <div id="uncertaintified-diagnostic-models" class="section level3">
 <h3>Uncertaintified diagnostic models</h3>
@@ -307,6 +307,7 @@ IotaQuality                1.0   3.00    6.0   2</code></pre>
 </div>
 <div id="building-the-datasets" class="section level1">
 <h1>Building the datasets</h1>
+<p>Because we can not share the initial database, we will create and provide simplified preprocessed datasets. From this moment, <strong>by the training and test sets we mean the calculated outputs of the uncertaintified diagnostic models</strong>.</p>
 <p>The same structure is used for both the training and test sets (<code>training.data</code> and <code>test.data</code> data frames, respectively). First <span class="math">\(4\)</span> columns of a data frame indicate the following:</p>
 <ol style="list-style-type: decimal">
 <li><code>PatientId</code> - a patient’s identifier in the original database,</li>

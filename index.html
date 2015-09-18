@@ -2,7 +2,7 @@
 <html lang="en-us">
   <head>
     <meta charset="UTF-8">
-    <title>Ovarian tumor aggregation by OvaExpert</title>
+    <title>Solving the problem of incomplete data in medical diagnosis via interval modeling</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
@@ -11,11 +11,11 @@
   </head>
   <body>
     <section class="page-header">
-      <h1 class="project-name">Ovarian tumor aggregation</h1>
+      <h1 class="project-name">Solving the problem of incomplete data</h1>
+      <h1 class="project-name">in medical diagnosis via interval modeling</h1>
       <h2 class="project-tagline"></h2>
       <a href="https://github.com/ovaexpert/ovarian-tumor-aggregation" class="btn">View on GitHub</a>
-      <a href="https://github.com/ovaexpert/ovarian-tumor-aggregation/zipball/master" class="btn">Download .zip</a>
-      <a href="https://github.com/ovaexpert/ovarian-tumor-aggregation/tarball/master" class="btn">Download .tar.gz</a>
+      <a href="https://github.com/ovaexpert/ovarian-tumor-aggregation/releases/latest" class="btn">Download project bundle (.tar.gz)</a>
     </section>
 
     <section class="main-content">
@@ -23,7 +23,12 @@
         <h1>Introduction</h1>
     
         <p>This page describes files which compose the research implementation 
-        on supporting medical diagnosis under incomplete data.</p>
+        on supporting medical diagnosis under incomplete data. The approach includes 
+        interval modeling of incomplete data, uncertaintification of classical models 
+        and aggregation of incomplete results. The evaluation of the approach uses medical 
+        data for ovarian tumor diagnosis, where the problem of missing data is commonly encountered.</p>
+        
+        <h3>Technical details</h3>
 
         <p>All scripts are written in <a href="http://cran.r-project.org">R 3.1.2</a>. 
         The <a href="http://www.rstudio.com">RStudio</a> project is supervised by
@@ -37,7 +42,7 @@
         
         <ol>
             <li><a href="make-datasets.html">making analytic datasets</a>,</li>
-            <li><a href="evaluation.html">evaluation process</a>,</li>
+            <li><a href="training-and-evaluation.html">training and evaluation</a>,</li>
             <li><a href="results-overview.html">visualizing results</a>.</li>
         </ol>
 
@@ -46,22 +51,22 @@
 |              STEP 1                                  STEP 2                                STEP 3
 |
 |  ##############################     #########################################     #########################
-|  #  make-datasets.Rmd         #     #  evaluation.Rmd                       #     #  results-overview.Rmd #
+|  #  make-datasets.Rmd         #     #  training-and-evaluation.Rmd          #     #  results-overview.Rmd #
 |  ##############################     #########################################     #########################
 |  #                            #     #                                       #     #                       #
-----&gt; make-datasets.R           #  ----&gt; evaluation.R                         #  ----&gt; results-overview.R   #
+----&gt; make-datasets.R           #  ----&gt; training-and-evaluation.R            #  ----&gt; results-overview.R   #
    #   |                        #  |  #   |                                   #  |  #                       #
    #   -&gt; datasets/training.csv &gt;---  #   -&gt; datasets/evaluation-output.RData &gt;---  #                       #
    #   -&gt; datasets/test.csv     &gt;---  #                                       #     #                       #
    #                            #     #                                       #     #                       #
    ##############################     #########################################     #########################
      |                                  |                                             |
-     -&gt; make-datasets.html              -&gt; evaluation.html                            -&gt; results-overview.html</code></pre>
+     -&gt; make-datasets.html              -&gt; training-and-evaluation.html               -&gt; results-overview.html</code></pre>
 
         <h1><a id="downloading-the-results" class="anchor" href="#downloading-the-results" aria-hidden="true"></a>Downloading the results</h1>
 
         <p>To view outputs of the experiment, run <code>download-data.R</code> script. It will 
-        download CSV datasets and binary Rdata output:</p>
+        download CSV datasets and binary RData output:</p>
 
         <ul>
         <li><code>datasets/training.csv</code>,</li>
@@ -73,7 +78,7 @@
 
         <p>To prepare the software environment to the experiment, open 
         <code>ovarian-tumor-aggregation.Rproj</code> file in RStudio in order to launch packrat and 
-        download necessary libraries.</p>
+        download necessary libraries. The installation process may take from a few to several minutes.</p>
         
         <p>Due to legal restrictions, the initial database <code>datasets/db-2015-04-30.csv</code> can not be published. 
         Therefore, <strong>the first step is not reproducible</strong>. The remaining steps can be reproduced in two ways (A or B, see sections below). To reflect whole experiment, non-reproducible steps also will be mentioned.</p>
@@ -85,12 +90,12 @@
 
         <ol>
             <li><code>make-datasets.R</code> (not reproducible),</li>
-            <li><code>evaluation.R</code>.</li>
+            <li><code>training-and-evaluation.R</code>.</li>
         </ol>
         
         Created CSV and RData files are mentioned in the section <a href="#downloading-the-results">Downloading the results</a>.
 
-        <p><strong>Caution</strong>: running <code>evaluation.R</code> is very time-consuming and extensively 
+        <p><strong>Caution</strong>: running <code>training-and-evaluation.R</code> is very time-consuming and extensively 
         absorbs computational resources; it is recommended to run it in environment with
         32 x 2.0 GHz cores and at least 200 GB RAM in such setting; the calculation process should take
         approximately 18 hours.</p>
@@ -102,7 +107,7 @@
 
         <ol>
             <li><code>make-datasets.Rmd</code> (not reproducible),</li>
-            <li><code>evaluation.Rmd</code>,</li>
+            <li><code>training-and-evaluation.Rmd</code>,</li>
             <li><code>results-overview.Rmd</code>.</li>
         </ol>
         

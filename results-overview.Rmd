@@ -34,6 +34,9 @@ In the following document we present an overview of the performance of aggregati
 ```{r load-data-and-scripts}
 load("datasets/evaluation-output.RData")
 source("results-overview.R")
+library(knitr)
+library(dplyr)
+options(digits=3)
 ```
 
 # Results
@@ -76,6 +79,22 @@ plotStatsTestSet(test.stats.all,
                   c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
 ```
 
+```{r ci-values-test}
+tab.ci.aggs.names = test.stats.aggrs %>% filter(Measure=="Cost matrix") %>% group_by(Class, Subclass, Subsubclass) %>% slice(which.min(Value)) %>% ungroup %>% select(Method) %>% unlist %>% as.vector
+
+tab.ci.all = left_join(test.stats.all.wide %>% filter(Class=="Model" | Method %in% tab.ci.aggs.names) %>%  select(-c(`Accuracy (all)`, `Sensitivity (all)`, `Specificity (all)`)),
+          dcast(test.stats.all %>% filter(Class=="Model" | Method %in% tab.ci.aggs.names),
+      Method ~ Measure,
+      value.var="CI") %>% select(-c(`Accuracy (all)`, `Sensitivity (all)`, `Specificity (all)`)) %>% rename(`Acc. 95% CI`=Accuracy, `Cost m. 95% CI`=`Cost matrix`, `Dec. 95% CI`=Decisiveness, `Sen. 95% CI`=Sensitivity, `Spec. 95% CI`=Specificity),
+    by="Method") %>%
+    select(Method, Class, Subclass, Subsubclass, Accuracy, `Acc. 95% CI`, `Cost matrix`,
+           `Cost m. 95% CI`, Decisiveness, `Dec. 95% CI`, Sensitivity, 
+           `Sen. 95% CI`, Specificity, `Spec. 95% CI`) %>% arrange(desc(Class)) %>% select(-c(Class, Subclass, Subsubclass))
+
+kable(tab.ci.all, caption="Detailed performance measures with 95% confidence intervals on test set for both original and uncertaintified methods and best aggregation methods.")
+
+```
+
 ## Selected aggregation strategies
 
 The left part of the following figure compares the total cost performance on the test set of the
@@ -88,6 +107,19 @@ plotSelectedAggregationOperators(selected.aggrs,
                                  c("Sensitivity", "Specificity", "Decisiveness", "Accuracy"))
 ```
 
+```{r c-table-selected}
+
+tab.ci.selected = left_join(test.stats.all.wide %>% filter(Method %in% selected.aggrs$Method) %>%  select(-c(`Accuracy (all)`, `Sensitivity (all)`, `Specificity (all)`)),
+          dcast(test.stats.all %>% filter(Method %in% selected.aggrs$Method),
+      Method ~ Measure,
+      value.var="CI") %>% select(-c(`Accuracy (all)`, `Sensitivity (all)`, `Specificity (all)`)) %>% rename(`Acc. 95% CI`=Accuracy, `Cost m. 95% CI`=`Cost matrix`, `Dec. 95% CI`=Decisiveness, `Sen. 95% CI`=Sensitivity, `Spec. 95% CI`=Specificity),
+    by="Method")  %>% select(Method, Class, Subclass, Subsubclass, Accuracy, `Acc. 95% CI`, `Cost matrix`,
+           `Cost m. 95% CI`, Decisiveness, `Dec. 95% CI`, Sensitivity, 
+           `Sen. 95% CI`, Specificity, `Spec. 95% CI`) %>% arrange(desc(Class)) %>% select(-c(Class, Subclass, Subsubclass))
+
+kable(tab.ci.selected, caption="Detailed performance measures with 95% confidence intervals on test set for selected aggregation methods.")
+```
+
 ## Difference between aggregation strategies and uncertaintified models
 
 The following table shows the resuls McNemar's test among the selected aggregation
@@ -95,9 +127,6 @@ strategies and with relation to the uncertaintified models. The `NaN` values ind
 that in a given pair of methods classify identically.
 
 ```{r mcnemar-pvals}
-library(knitr)
-library(dplyr)
-
 desc = AGGREGATORS.BINDED.DESCRIPTION %>% 
        filter(Method %in% colnames(pvals))
 legend = data.frame(Id=LETTERS[1:length(colnames(pvals))], 

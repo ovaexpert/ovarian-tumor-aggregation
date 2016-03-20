@@ -80,6 +80,37 @@ calculate.stats = function(aggregated){
     return(result)
 }
 
+bootStat = function(data, idx)
+{
+    data.input = data[idx, ]
+
+    vals = melt(
+            calculate.stats(
+                aggregate.outcomes(
+                    data.input
+                )
+            ),
+            id.vars="ObscureLevel",
+            variable.name="Method",
+            value.name="Value")$Value
+
+    return(vals)
+}
+
+getBootCI = function(data.boots, idx)
+{
+    tmp = capture.output(vals <- tryCatch({
+        boot.ci(data.boots, type="perc", index=idx)$percent[4:5]},
+        error=function(cond){NULL}))
+    if (class(vals)=="NULL")
+    {
+        return("-")
+    }
+    else {
+        return (gsub(" ", "", paste0("(", paste(format(round(vals, 3), nsmall=3), collapse="-"), ")")))
+    }
+}
+
 # auxiliary functions
 
 printDebug = function(msg)

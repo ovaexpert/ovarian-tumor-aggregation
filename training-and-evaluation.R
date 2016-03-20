@@ -13,6 +13,7 @@ source("utils.R")
 library(parallel)
 library(reshape2)
 library(dplyr)
+library(boot)
 
 # ---- read-datasets ----
 
@@ -177,6 +178,12 @@ test.stats.orig.models$Method = paste("orig.", test.stats.orig.models$Method)
 colnames(outcomes.orig.models)[4:(4+length(METHODS)-1)] =
     paste("orig.", colnames(outcomes.orig.models))[4:(4+length(METHODS)-1)]
 
+boot.test.stats.orig.models = boot(outcomes.orig.models, bootStat, BOOTSTRAP_R,
+                                   strata=ds.test$MalignancyCharacter)
+
+test.stats.orig.models$CI = sapply(1:nrow(test.stats.orig.models),
+   function(i){getBootCI(boot.test.stats.orig.models, i)})
+
 # ---- test-statistics-models-uncertaintified ----
 
 printDebug("test statistics models uncertaintified")
@@ -199,6 +206,12 @@ test.stats.uncer.models = melt(
 test.stats.uncer.models$Method = paste("unc.", test.stats.uncer.models$Method)
 colnames(outcomes.models.unc)[4:(4+length(METHODS)-1)] =
     paste("unc.", colnames(outcomes.models.unc))[4:(4+length(METHODS)-1)]
+
+boot.test.stats.uncer.models = boot(outcomes.models.unc, bootStat, BOOTSTRAP_R,
+                                    strata=ds.test$MalignancyCharacter)
+
+test.stats.uncer.models$CI = sapply(1:nrow(test.stats.uncer.models),
+    function(i){getBootCI(boot.test.stats.uncer.models, i)})
 
 # ---- test-statistics-aggregators ----
 
@@ -238,6 +251,12 @@ test.stats.aggrs = suppressWarnings( # suppress different factor levels warning
                                   AGGREGATORS.BINDED.DESCRIPTION,
                                   by="Method")
                    )
+
+boot.test.stats.aggrs = boot(outcomes.aggrs, bootStat, BOOTSTRAP_R,
+                             strata=ds.test$MalignancyCharacter)
+
+test.stats.aggrs$CI = sapply(1:nrow(test.stats.aggrs),
+    function(i){getBootCI(boot.test.stats.aggrs, i)})
 
 # ---- test-statistics-bind ----
 

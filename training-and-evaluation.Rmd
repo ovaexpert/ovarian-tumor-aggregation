@@ -54,6 +54,8 @@ As a measure of classification effectiveness we choose `PERFORMANCE.MEASURE`
 
 To parallelize calculation process there will be used `THREADS` = `r THREADS` threads.
 
+To estimate uncertainty performance of final models, we perform stratified bootstraping with `BOOTSTRAP_R` = `r BOOTSTRAP_R` replications.
+
 ### Diagnostic models
 
 The uncertaintified diagnostic models are implemented in `methods.R` file and they
@@ -253,6 +255,8 @@ The following code produces results for the uncertaintified models:
 ```{r test-statistics-models-uncertaintified}
 ```
 
+Both steps perform stratified bootstraping to estimate performance uncertainty.
+
 ## Aggregation operators and thresholding strategies
 
 Similar procedure is performed for the aggregation strategies:
@@ -271,6 +275,8 @@ aggregation operators.
 
 ```{r test-statistics-aggregators}
 ```
+
+This step also performs stratified bootstraping to estimate performance uncertainty.
 
 ## Binding results
 
